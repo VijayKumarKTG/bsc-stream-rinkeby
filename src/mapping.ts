@@ -1,60 +1,52 @@
-import { BigInt } from "@graphprotocol/graph-ts"
+import { BigInt } from '@graphprotocol/graph-ts';
 import {
   BSC_Stream,
   CancelStream,
   CreateStream,
-  WithdrawFromStream
-} from "../generated/BSC_Stream/BSC_Stream"
-import { ExampleEntity } from "../generated/schema"
+  WithdrawFromStream,
+} from '../generated/BSC_Stream/BSC_Stream';
+import { Stream } from '../generated/schema';
 
 export function handleCancelStream(event: CancelStream): void {
-  // Entities can be loaded from the store using a string ID; this ID
-  // needs to be unique across all entities of the same type
-  let entity = ExampleEntity.load(event.transaction.from.toHex())
-
-  // Entities only exist after they have been saved to the store;
-  // `null` checks allow to create entities on demand
-  if (!entity) {
-    entity = new ExampleEntity(event.transaction.from.toHex())
-
-    // Entity fields can be set using simple assignments
-    entity.count = BigInt.fromI32(0)
+  let stream = Stream.load(event.params.streamId.toString());
+  if (stream) {
+    stream.status = 'cancelled';
+    stream.amount = event.params.recipientBalance;
+    stream.save();
   }
-
-  // BigInt and BigDecimal math are supported
-  entity.count = entity.count + BigInt.fromI32(1)
-
-  // Entity fields can be set based on event parameters
-  entity.streamId = event.params.streamId
-  entity.sender = event.params.sender
-
-  // Entities can be written to the store with `.save()`
-  entity.save()
-
-  // Note: If a handler doesn't require existing field values, it is faster
-  // _not_ to load the entity from the store. Instead, create it fresh with
-  // `new Entity(...)`, set the fields that should be updated and save the
-  // entity back to the store. Fields that were not set or unset remain
-  // unchanged, allowing for partial updates to be applied.
-
-  // It is also possible to access smart contracts from mappings. For
-  // example, the contract that has emitted the event can be connected to
-  // with:
-  //
-  // let contract = Contract.bind(event.address)
-  //
-  // The following functions can then be called on this contract to access
-  // state variables and other data:
-  //
-  // - contract.cancelStream(...)
-  // - contract.createStream(...)
-  // - contract.withdrawFromStream(...)
-  // - contract.balanceOf(...)
-  // - contract.deltaOf(...)
-  // - contract.getStream(...)
-  // - contract.nextStreamId(...)
+  return;
 }
 
-export function handleCreateStream(event: CreateStream): void {}
+export function handleCreateStream(event: CreateStream): void {
+  let stream = Stream.load(event.params.streamId.toString());
+  if (!stream) {
+    stream = new Stream(event.params.streamId.toString());
+  }
+  stream.streamId = event.params.streamId;
+  stream.deposit = event.params.deposit;
+  stream.recipient = event.params.recipient;
+  stream.stopTime = event.params.stopTime;
+  stream.startTime = event.params.startTime;
+  stream.sender = event.params.sender;
+  stream.tokenAddress = event.params.tokenAddress;
+  stream.tx = event.transaction.hash.toHexString();
+  stream.status = 'active';
+  stream.amount = new BigInt(0);
+  stream.save();
+}
 
-export function handleWithdrawFromStream(event: WithdrawFromStream): void {}
+export function handleWithdrawFromStream(event: WithdrawFromStream): void {
+  let stream = Stream.load(event.params.streamId.toString());
+  if (stream) {
+    let sablier = BSC_Stream.bind(event.address);
+    let result = sablier.try_getStream(event.params.streamId);
+    if (result.reverted) {
+      stream.status = 'withdrawn';
+      stream.amount = event.params.amount.plus(stream.amount);
+      stream.save();
+    } else {
+      stream.amount = event.params.amount.plus(stream.amount);
+      stream.save();
+    }
+  }
+}

@@ -1,6 +1,14 @@
-type ExampleEntity @entity {
+type Stream @entity {
   id: ID!
-  count: BigInt!
-  streamId: BigInt! # uint256
-  sender: Bytes! # address
+  streamId: BigInt!
+  recipient: Bytes!
+  tokenAddress: Bytes!
+  sender: Bytes!
+  startTime: BigInt!
+  stopTime: BigInt!
+  deposit: BigInt!
+  isEntity: Boolean!
+  status: String!
+  tx: String!
+  amount: BigInt!
 }
