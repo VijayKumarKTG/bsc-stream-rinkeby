@@ -1,0 +1,29 @@
+specVersion: 0.0.1
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum/contract
+    name: BSC_Stream
+    network: rinkeby
+    source:
+      address: "0x8582f3B4CFd18b8FA66A352AE25F6D2DC2A359e3"
+      abi: BSC_Stream
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.5
+      language: wasm/assemblyscript
+      entities:
+        - CancelStream
+        - CreateStream
+        - WithdrawFromStream
+      abis:
+        - name: BSC_Stream
+          file: ./abis/BSC_Stream.json
+      eventHandlers:
+        - event: CancelStream(indexed uint256,indexed address,indexed address,uint256,uint256)
+          handler: handleCancelStream
+        - event: CreateStream(indexed uint256,indexed address,indexed address,uint256,address,uint256,uint256)
+          handler: handleCreateStream
+        - event: WithdrawFromStream(indexed uint256,indexed address,uint256)
+          handler: handleWithdrawFromStream
+      file: ./src/mapping.ts
